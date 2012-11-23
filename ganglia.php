@@ -366,53 +366,72 @@ function Gmetad ()
             break;
       }
 
-  $fp = fsockopen( $ip, $port, $errno, $errstr, $timeout);
-   if (!$fp)
-      {
-         $error = "fsockopen error: $errstr";
-         if ($debug) print "<br/>DEBUG: $error\n";
-         return FALSE;
-      }
+   if (isset($conf['gmetad_summary_file']) && file_exists($conf['gmetad_summary_file'])){
+       $start = gettimeofday();
 
-   if ($port == 8649)
-      {
-         # We are connecting to a gmond. Non-interactive.
-         xml_set_element_handler($parser, "start_cluster", "end_all");
-      }
-   else
-      {
-         $request .= "\n";
-         $rc = fputs($fp, $request);
-         if (!$rc)
-            {
-               $error = "Could not sent request to gmetad: $errstr";
-               if ($debug) print "<br/>DEBUG: $error\n";
-               return FALSE;
-            }
-      }
+       $data = file_get_contents($conf['gmetad_summary_file']);
+       if (!xml_parse($parser, $data, true)){
+           $error = sprintf("XML error: %s at %d", 
+               xml_error_string(xml_get_error_code($parser)),
+               xml_get_current_line_number($parser));
+           if ($debug) print "<br />DEBUG: $error\n";
+           return FALSE;
+       }
 
-   $start = gettimeofday();
+       $end = gettimeofday();
+       $parsetime = ($end['sec'] + $end['usec']/1e6) - ($start['sec'] + $start['usec']/1e6);
 
-   while(!feof($fp))
-      {
-         $data = fread($fp, 16384);
-         if (!xml_parse($parser, $data, feof($fp)))
-            {
-               $error = sprintf("XML error: %s at %d",
-                  xml_error_string(xml_get_error_code($parser)),
-                  xml_get_current_line_number($parser));
-               if ($debug) print "<br/>DEBUG: $error\n";
-               fclose($fp);
-               return FALSE;
-            }
-      }
-   fclose($fp);
+       if ($debug) print "<br/>DEBUG: theoretically completed gmetad parsing\n";
+       return TRUE;
+   }else{
+      $fp = fsockopen( $ip, $port, $errno, $errstr, $timeout);
+       if (!$fp)
+          {
+             $error = "fsockopen error: $errstr";
+             if ($debug) print "<br/>DEBUG: $error\n";
+             return FALSE;
+          }
 
-   $end = gettimeofday();
-   $parsetime = ($end['sec'] + $end['usec']/1e6) - ($start['sec'] + $start['usec']/1e6);
+       if ($port == 8649)
+          {
+             # We are connecting to a gmond. Non-interactive.
+             xml_set_element_handler($parser, "start_cluster", "end_all");
+          }
+       else
+          {
+             $request .= "\n";
+             $rc = fputs($fp, $request);
+             if (!$rc)
+                {
+                   $error = "Could not sent request to gmetad: $errstr";
+                   if ($debug) print "<br/>DEBUG: $error\n";
+                   return FALSE;
+                }
+          }
 
-   if ($debug) print "<br/>DEBUG: theoretically completed gmetad parsing\n";
-   return TRUE;
+       $start = gettimeofday();
+
+       while(!feof($fp))
+          {
+             $data = fread($fp, 16384);
+             if (!xml_parse($parser, $data, feof($fp)))
+                {
+                   $error = sprintf("XML error: %s at %d",
+                      xml_error_string(xml_get_error_code($parser)),
+                      xml_get_current_line_number($parser));
+                   if ($debug) print "<br/>DEBUG: $error\n";
+                   fclose($fp);
+                   return FALSE;
+                }
+          }
+       fclose($fp);
+
+       $end = gettimeofday();
+       $parsetime = ($end['sec'] + $end['usec']/1e6) - ($start['sec'] + $start['usec']/1e6);
+
+       if ($debug) print "<br/>DEBUG: theoretically completed gmetad parsing\n";
+       return TRUE;
+   }
 }
 
 ?>
