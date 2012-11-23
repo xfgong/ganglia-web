@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-GANGLIA_URL="http://localhost/ganglia2/nagios/check_metric.php"
+GANGLIA_URL="http://10.100.96.29/nagios/check_metric.php"
 
 # Build the rest of the arguments into the arg string for the URL.
 CHECK_ARGS=''
@@ -32,6 +32,7 @@ else
 fi
 
 RESULT=`curl -s ${GANGLIA_URL}?${CHECK_ARGS}`
+#echo ${GANGLIA_URL}?${CHECK_ARGS}
 EXIT_CODE=`echo $RESULT | cut -f1 -d'|'`
 
 IFS='|'
